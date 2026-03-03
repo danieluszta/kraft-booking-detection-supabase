@@ -1,0 +1,57 @@
+You are analyzing a tourism/activity provider's website HTML to determine if they have online booking capability.
+
+WEBSITE HTML:
+{homepage_html}
+
+TASK: Determine if this provider has an online booking system where customers can book and pay for experiences directly on the website.
+
+KNOWN BOOKING PLATFORMS (check for these by name, script/embed code, iframe, or URL patterns):
+- FareHarbor (fareharbor.com, fh-widget)
+- Bokun (bokun.io, bokunwidget)
+- Regiondo (regiondo.com, regiondo-widget)
+- GetYourGuide (getyourguide.com, gyg-widget)
+- Viator (viator.com, supplier.viator)
+- Rezdy (rezdy.com)
+- Peek (peek.com, peekwidget)
+- Bookeo (bookeo.com)
+- TrekkSoft (trekksoft.com)
+- Checkfront (checkfront.com)
+- Xola (xola.com)
+- Rezgo (rezgo.com)
+- Bookingkit (bookingkit.de)
+- Ventrata (ventrata.com)
+- TripAdmit (tripadmit.com)
+
+BOOKING UI PATTERNS (signals that booking exists):
+- Date picker / calendar selector
+- "Select date", "Choose date", "Pick a date"
+- "Add to cart", "Book now", "Reserve now", "Buy tickets"
+- Guest/participant selector ("Adults", "Children", "Group size")
+- Price displayed with booking button
+- Availability calendar
+- Shopping cart / checkout flow
+- "Instant confirmation"
+
+NOT BOOKING (do not count these):
+- Contact forms ("Send us a message", "Get in touch")
+- "Enquire now", "Request a quote", "Ask for availability"
+- Phone number or email for reservations
+- "Call to book", "Email to reserve"
+- Social media links
+- Newsletter signup forms
+- Generic "Learn more" buttons
+
+Return valid JSON:
+
+{
+  "has_booking": true or false,
+  "booking_platform": "platform name" or null,
+  "reasoning": "brief explanation of what was found or not found"
+}
+
+Rules:
+- If you find a known platform embed/script/iframe, set has_booking: true and name the platform
+- If you find clear booking UI (date picker + purchase button) but no known platform, set has_booking: true and booking_platform: null
+- If only ambiguous signals ("Book now" link with no checkout flow), set has_booking: false and explain in reasoning
+- If no booking signals at all, set has_booking: false
+- Keep reasoning under 200 characters

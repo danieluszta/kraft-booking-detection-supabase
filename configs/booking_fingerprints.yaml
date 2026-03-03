@@ -1,0 +1,128 @@
+# Regex scan for known booking platform JS signatures in scraped homepage HTML.
+# Fast, zero-cost alternative to LLM for detecting well-known booking widgets.
+# Run this BEFORE llm_analysis/booking-detection to pre-populate known platforms.
+
+patterns:
+  # --- Known booking platforms ---
+  - label: bokun
+    regex: "bokun\\.io|widget\\.bokun\\.io"
+    category: booking_platform
+
+  - label: fareharbor
+    regex: "fareharbor\\.com|fhstart\\.com"
+    category: booking_platform
+
+  - label: rezdy
+    regex: "rezdy\\.com|widgets\\.rezdy\\.com"
+    category: booking_platform
+
+  - label: checkfront
+    regex: "checkfront\\.com"
+    category: booking_platform
+
+  - label: peek_pro
+    regex: "peekpro\\.com|peek\\.us"
+    category: booking_platform
+
+  - label: trekksoft
+    regex: "trekksoft\\.com"
+    category: booking_platform
+
+  - label: xola
+    regex: "xola\\.com"
+    category: booking_platform
+
+  - label: regiondo
+    regex: "regiondo\\.com|regiondo\\.de"
+    category: booking_platform
+
+  - label: bookeo
+    regex: "bookeo\\.com"
+    category: booking_platform
+
+  - label: acuity
+    regex: "acuityscheduling\\.com"
+    category: booking_platform
+
+  - label: calendly
+    regex: "calendly\\.com"
+    category: booking_platform
+
+  - label: simplybook
+    regex: "simplybook\\.me|simplybook\\.it"
+    category: booking_platform
+
+  - label: ventrata
+    regex: "ventrata\\.com"
+    category: booking_platform
+
+  - label: travelotopos
+    regex: "travelotopos\\.com"
+    category: booking_platform
+
+  - label: musement
+    regex: "musement\\.com"
+    category: booking_platform
+
+  - label: viator_widget
+    regex: "widget\\.viator\\.com|viatorproducts\\.com"
+    category: booking_platform
+
+  - label: getyourguide_widget
+    regex: "widget\\.getyourguide\\.com"
+    category: booking_platform
+
+  - label: teamup
+    regex: "teamup\\.com"
+    category: booking_platform
+
+  - label: jotform
+    regex: "jotform\\.com|form\\.jotform\\.com"
+    category: booking_platform
+
+  - label: typeform
+    regex: "typeform\\.com"
+    category: booking_platform
+
+  # --- E-commerce (often used for direct booking) ---
+  - label: woocommerce
+    regex: "woocommerce|wc-ajax|add_to_cart"
+    category: ecommerce
+
+  - label: shopify
+    regex: "shopify\\.com|myshopify\\.com|Shopify\\.theme"
+    category: ecommerce
+
+  - label: sylius
+    regex: "sylius|sylius-cart"
+    category: ecommerce
+
+  # --- Payment signals (strong indicator of native booking) ---
+  - label: stripe
+    regex: "js\\.stripe\\.com|stripe\\.com/v3"
+    category: payment_signal
+
+  - label: paypal
+    regex: "paypal\\.com/sdk|paypalobjects\\.com"
+    category: payment_signal
+
+  - label: square
+    regex: "squareup\\.com|square\\.site"
+    category: payment_signal
+
+  # --- Generic booking intent signals ---
+  - label: book_now_cta
+    regex: "book now|book today|book online|book your"
+    category: booking_signal
+
+  - label: add_to_cart
+    regex: "add.to.cart|addtocart|add_to_cart"
+    category: booking_signal
+
+  - label: checkout_flow
+    regex: "/checkout|/cart|/basket"
+    category: booking_signal
+
+execution:
+  workers: 20
+  case_insensitive: true
