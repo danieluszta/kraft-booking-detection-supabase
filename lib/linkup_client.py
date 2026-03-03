@@ -4,16 +4,10 @@ Wraps the standalone linkup_local module and adds
 pre/post API call logging to the Supabase log table.
 """
 
-import sys
 import time
 import logging
-from pathlib import Path
 
-_PARENT_LIB = str(Path(__file__).resolve().parent.parent.parent / "lib")
-if _PARENT_LIB not in sys.path:
-    sys.path.insert(0, _PARENT_LIB)
-
-import linkup_local
+from lib import linkup_local
 
 logger = logging.getLogger(__name__)
 

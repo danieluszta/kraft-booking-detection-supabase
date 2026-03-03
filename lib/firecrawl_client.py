@@ -4,17 +4,10 @@ Wraps the standalone firecrawl functions (scrape_url, crawl_url) and adds
 pre/post API call logging to the Supabase log table.
 """
 
-import sys
 import time
 import logging
-from pathlib import Path
 
-# Add parent lib directory to path for the local modules
-_PARENT_LIB = str(Path(__file__).resolve().parent.parent.parent / "lib")
-if _PARENT_LIB not in sys.path:
-    sys.path.insert(0, _PARENT_LIB)
-
-import firecrawl_local
+from lib import firecrawl_local
 
 logger = logging.getLogger(__name__)
 
