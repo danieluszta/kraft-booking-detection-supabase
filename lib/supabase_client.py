@@ -6,19 +6,53 @@ Uses supabase-py for CRUD and psycopg2 for batch operations.
 
 import json
 import logging
+import time
 from datetime import datetime, timezone
 from typing import Optional
 
+import httpx
 from supabase import create_client, Client
+from supabase.lib.client_options import SyncClientOptions
 
 logger = logging.getLogger(__name__)
+
+_MAX_RETRIES = 3
+_RETRY_BASE_SECONDS = 1
+
+
+def _with_retry(func, description: str = "operation"):
+    """Execute a Supabase operation with retry on transient HTTP/connection errors."""
+    for attempt in range(1, _MAX_RETRIES + 1):
+        try:
+            return func()
+        except (httpx.RemoteProtocolError, httpx.ReadError, httpx.WriteError,
+                httpx.ConnectError, httpx.PoolTimeout) as e:
+            if attempt < _MAX_RETRIES:
+                wait = _RETRY_BASE_SECONDS * (2 ** (attempt - 1))
+                logger.warning(
+                    "Supabase %s failed (attempt %d/%d): %s — retrying in %ds",
+                    description, attempt, _MAX_RETRIES, e, wait,
+                )
+                time.sleep(wait)
+            else:
+                logger.error(
+                    "Supabase %s failed after %d attempts: %s",
+                    description, _MAX_RETRIES, e,
+                )
+                raise
 
 
 class SupabaseBookingClient:
     """Central data-access client for the booking detection pipeline."""
 
     def __init__(self, supabase_url: str, supabase_key: str, database_url: str = None):
-        self.client: Client = create_client(supabase_url, supabase_key)
+        # Force HTTP/1.1 to avoid HTTP/2 framing errors under concurrent load
+        http1_client = httpx.Client(http2=False, timeout=httpx.Timeout(120))
+        self.client: Client = create_client(
+            supabase_url,
+            supabase_key,
+            options=SyncClientOptions(httpx_client=http1_client),
+        )
         self.database_url = database_url
 
     # -------------------------------------------------------------------
@@ -28,24 +62,30 @@ class SupabaseBookingClient:
     def fetch_pending_domains(self, table: str, batch_size: int) -> list[str]:
         """Fetch pending domains and atomically mark them as processing."""
         try:
-            resp = (
-                self.client.table(table)
-                .select("domain")
-                .eq("status", "pending")
-                .order("id")
-                .limit(batch_size)
-                .execute()
+            resp = _with_retry(
+                lambda: (
+                    self.client.table(table)
+                    .select("domain")
+                    .eq("status", "pending")
+                    .order("id")
+                    .limit(batch_size)
+                    .execute()
+                ),
+                description="fetch_pending_domains",
             )
             domains = [row["domain"] for row in resp.data]
             if domains:
-                (
-                    self.client.table(table)
-                    .update({
-                        "status": "processing",
-                        "updated_at": _now_iso(),
-                    })
-                    .in_("domain", domains)
-                    .execute()
+                _with_retry(
+                    lambda: (
+                        self.client.table(table)
+                        .update({
+                            "status": "processing",
+                            "updated_at": _now_iso(),
+                        })
+                        .in_("domain", domains)
+                        .execute()
+                    ),
+                    description="mark_domains_processing",
                 )
             return domains
         except Exception as e:
@@ -55,11 +95,14 @@ class SupabaseBookingClient:
     def mark_domain_done(self, table: str, domain: str):
         """Mark a domain as done in the input table."""
         try:
-            (
-                self.client.table(table)
-                .update({"status": "done", "updated_at": _now_iso()})
-                .eq("domain", domain)
-                .execute()
+            _with_retry(
+                lambda: (
+                    self.client.table(table)
+                    .update({"status": "done", "updated_at": _now_iso()})
+                    .eq("domain", domain)
+                    .execute()
+                ),
+                description=f"mark_domain_done({domain})",
             )
         except Exception as e:
             logger.warning("Failed to mark domain done: %s %s", domain, e)
@@ -103,16 +146,19 @@ class SupabaseBookingClient:
                       last_pass: str, completed: bool = False):
         """Insert or update a result row for a domain."""
         try:
-            (
-                self.client.table(table)
-                .upsert({
-                    "domain": domain,
-                    "result": result,
-                    "last_pass": last_pass,
-                    "completed": completed,
-                    "updated_at": _now_iso(),
-                }, on_conflict="domain")
-                .execute()
+            _with_retry(
+                lambda: (
+                    self.client.table(table)
+                    .upsert({
+                        "domain": domain,
+                        "result": result,
+                        "last_pass": last_pass,
+                        "completed": completed,
+                        "updated_at": _now_iso(),
+                    }, on_conflict="domain")
+                    .execute()
+                ),
+                description=f"upsert_result({domain})",
             )
         except Exception as e:
             logger.error("Failed to upsert result for %s: %s", domain, e)
@@ -188,11 +234,14 @@ class SupabaseBookingClient:
                 update["error_message"] = (error_message or "")[:500]
             if response_preview:
                 update["response_preview"] = (response_preview or "")[:500]
-            (
-                self.client.table(table)
-                .update(update)
-                .eq("id", log_id)
-                .execute()
+            _with_retry(
+                lambda: (
+                    self.client.table(table)
+                    .update(update)
+                    .eq("id", log_id)
+                    .execute()
+                ),
+                description=f"log_api_end({log_id})",
             )
         except Exception as e:
             logger.warning("Failed to update log %s: %s", log_id, e)
@@ -200,7 +249,10 @@ class SupabaseBookingClient:
     def _insert_log(self, table: str, row: dict) -> int | None:
         """Insert a log row and return its id. Silent failure."""
         try:
-            resp = self.client.table(table).insert(row).execute()
+            resp = _with_retry(
+                lambda: self.client.table(table).insert(row).execute(),
+                description="insert_log",
+            )
             if resp.data:
                 return resp.data[0].get("id")
             return None
