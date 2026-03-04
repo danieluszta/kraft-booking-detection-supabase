@@ -110,15 +110,18 @@ class SupabaseBookingClient:
     def mark_domain_error(self, table: str, domain: str, error_msg: str):
         """Mark a domain as errored in the input table."""
         try:
-            (
-                self.client.table(table)
-                .update({
-                    "status": "error",
-                    "error_message": error_msg[:500],
-                    "updated_at": _now_iso(),
-                })
-                .eq("domain", domain)
-                .execute()
+            _with_retry(
+                lambda: (
+                    self.client.table(table)
+                    .update({
+                        "status": "error",
+                        "error_message": error_msg[:500],
+                        "updated_at": _now_iso(),
+                    })
+                    .eq("domain", domain)
+                    .execute()
+                ),
+                description=f"mark_domain_error({domain})",
             )
         except Exception as e:
             logger.warning("Failed to mark domain error: %s %s", domain, e)

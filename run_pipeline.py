@@ -251,7 +251,7 @@ def pass6_straight_crawl(domains, crawled_pages, firecrawl, sb, dest_table, log_
                 new_pages = [p for p in pages if p["url"] not in existing_urls]
                 crawled_pages[domain] = existing + new_pages
 
-    logger.info("Pass 6 complete: %d/%d domains crawled", len(unresolved), len(unresolved))
+    logger.info("Pass 6 complete: %d/%d domains crawled", len(crawled_pages), len(unresolved))
     return crawled_pages
 
 
